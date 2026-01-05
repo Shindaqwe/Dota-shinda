@@ -1,0 +1,5 @@
+dota2-bot/
+├── requirements.txt      # Зависимости
+├── main.py              # Основной код
+├── runtime.txt          # Версия Python
+└── render.yaml          # Конфиг для Render (опционально)

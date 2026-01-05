@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: dota2-telegram-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: STEAM_API_KEY
+        sync: false
+        optional: true
