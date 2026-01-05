@@ -31,7 +31,8 @@ if not BOT_TOKEN:
     logger.error("❌ BOT_TOKEN не найден!")
     exit(1)
 
-bot = Bot(token=BOT_TOKEN, parse_mode="HTML")
+from aiogram.client.default import DefaultBotProperties
+bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 
