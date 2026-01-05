@@ -849,4 +849,418 @@ async def meta_cmd(message: types.Message):
                 timeout=10
             ) as r:
                 if r.status == 200:
-                    hero
+                    all_heroes = await r.json()
+                    
+                    # Фильтруем героев с высоким винрейтом и частотой пика
+                    meta_heroes = []
+                    for hero in all_heroes:
+                        # Берем только для Divine/Immortal (8th bracket)
+                        divine_stats = hero.get('8_pick', 0), hero.get('8_win', 0)
+                        if divine_stats[0] > 100:  # Более 100 пиков
+                            pick_rate = divine_stats[0]
+                            win_rate = (divine_stats[1] / divine_stats[0] * 100) if divine_stats[0] > 0 else 0
+                            
+                            if win_rate > 52:  # Винрейт выше 52%
+                                meta_heroes.append({
+                                    'name': hero.get('localized_name', 'Unknown'),
+                                    'pick_rate': pick_rate,
+                                    'win_rate': win_rate,
+                                    'hero_id': hero.get('id', 0)
+                                })
+                    
+                    # Сортируем по винрейту
+                    meta_heroes.sort(key=lambda x: x['win_rate'], reverse=True)
+                    
+                    if meta_heroes:
+                        response = "⚔️ <b>Текущая мета (Divine/Immortal):</b>\n\n"
+                        for i, hero in enumerate(meta_heroes[:10], 1):
+                            response += f"{i}. <b>{hero['name']}</b>\n"
+                            response += f"   📊 Winrate: {hero['win_rate']:.1f}%\n"
+                            response += f"   🎯 Частота пика: {hero['pick_rate']}\n\n"
+                        
+                        response += "<i>Данные обновляются автоматически с OpenDota</i>"
+                    else:
+                        response = "📭 Нет данных о мете. Попробуйте позже."
+                    
+                    await message.answer(response, parse_mode="HTML")
+                else:
+                    await message.answer("❌ Не удалось получить данные меты.")
+    
+    except Exception as e:
+        logger.error(f"Meta error: {e}")
+        await message.answer("❌ Ошибка при получении данных меты.")
+
+# ========== HERO BUILDS ==========
+@dp.message(F.text == "🛠 Сборки")
+async def builds_menu(message: types.Message):
+    keyboard = InlineKeyboardBuilder()
+    
+    # Группируем героев по ролям
+    roles = {
+        "1️⃣ Керри": [1, 2, 6, 8, 10, 11, 12, 14, 18, 19, 20, 22, 25, 35, 36, 41, 44, 48, 49, 53, 54, 59, 67, 70, 81, 94, 95, 109],
+        "2️⃣ Мидер": [3, 7, 9, 11, 22, 25, 32, 34, 39, 46, 47, 52, 55, 63, 65, 74, 76, 83, 98, 101, 106, 112, 126, 128, 129],
+        "3️⃣ Оффлейнер": [2, 7, 16, 18, 28, 29, 38, 51, 55, 57, 60, 68, 69, 77, 78, 96, 97, 99, 103, 108, 129, 135, 137],
+        "4️⃣ Саппорт": [5, 20, 26, 27, 30, 31, 33, 37, 40, 50, 64, 79, 80, 82, 85, 86, 87, 90, 91, 92, 102, 105, 111, 120, 121, 123],
+        "5️⃣ Хард саппорт": [4, 13, 15, 17, 21, 23, 24, 42, 43, 45, 56, 58, 61, 62, 66, 71, 72, 75, 84, 88, 89, 100, 110, 114, 119, 131]
+    }
+    
+    for role_name, hero_ids in roles.items():
+        keyboard.button(text=role_name, callback_data=f"builds_role_{role_name}")
+    
+    keyboard.adjust(1)
+    
+    await message.answer(
+        "🛠 <b>Сборки предметов и способностей</b>\n\n"
+        "Выберите роль для просмотра героев:",
+        reply_markup=keyboard.as_markup(),
+        parse_mode="HTML"
+    )
+
+@dp.callback_query(F.data.startswith("builds_role_"))
+async def builds_by_role(callback: types.CallbackQuery):
+    role_name = callback.data.split("_", 2)[2]
+    
+    # Герои по ролям
+    role_heroes = {
+        "1️⃣ Керри": [
+            (1, "Anti-Mage"), (8, "Juggernaut"), (44, "Phantom Assassin"),
+            (94, "Medusa"), (109, "Terrorblade"), (67, "Spectre")
+        ],
+        "2️⃣ Мидер": [
+            (11, "Shadow Fiend"), (46, "Templar Assassin"), (74, "Invoker"),
+            (106, "Ember Spirit"), (126, "Void Spirit"), (35, "Sniper")
+        ],
+        "3️⃣ Оффлейнер": [
+            (18, "Sven"), (69, "Doom"), (99, "Bristleback"),
+            (78, "Brewmaster"), (97, "Magnus"), (129, "Mars")
+        ],
+        "4️⃣ Саппорт": [
+            (5, "Crystal Maiden"), (86, "Rubick"), (111, "Oracle"),
+            (120, "Pangolier"), (90, "Keeper of the Light")
+        ],
+        "5️⃣ Хард саппорт": [
+            (20, "Vengeful Spirit"), (45, "Pugna"), (50, "Dazzle"),
+            (13, "Puck"), (105, "Techies")
+        ]
+    }
+    
+    heroes = role_heroes.get(role_name, [])
+    
+    if not heroes:
+        await callback.answer("❌ Нет героев для этой роли")
+        return
+    
+    keyboard = InlineKeyboardBuilder()
+    for hero_id, hero_name in heroes[:10]:  # Ограничим 10 героями
+        keyboard.button(text=hero_name, callback_data=f"build_hero_{hero_id}")
+    
+    keyboard.button(text="⬅️ Назад", callback_data="builds_back")
+    keyboard.adjust(1)
+    
+    await callback.message.edit_text(
+        f"🛠 <b>Герои ({role_name}):</b>\n\n"
+        f"Выберите героя для просмотра сборки:",
+        reply_markup=keyboard.as_markup(),
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+@dp.callback_query(F.data.startswith("build_hero_"))
+async def hero_build(callback: types.CallbackQuery):
+    hero_id = int(callback.data.split("_")[-1])
+    
+    # Получаем данные о герое
+    heroes = await get_heroes_data()
+    hero_name = heroes.get(str(hero_id), f"Герой {hero_id}")
+    
+    # Примерные сборки (в реальном боте можно получать из API)
+    builds = {
+        1: {  # Anti-Mage
+            "items": ["Battle Fury", "Manta Style", "Abyssal Blade", "Butterfly", "Eye of Skadi"],
+            "skills": "Max Blink first, then Mana Break, Spell Shield last",
+            "talents": "10: +15 Damage, 15: +0.4 Mana Burn, 20: -2s Blink CD, 25: +125 Blink Range"
+        },
+        8: {  # Juggernaut
+            "items": ["Battle Fury", "Manta Style", "Skull Basher", "Butterfly", "Aghanim's Scepter"],
+            "skills": "Max Blade Fury, then Healing Ward, stats early",
+            "talents": "10: +20 Attack Speed, 15: +25 Movement Speed, 20: +20 Omnislash Damage, 25: Swift Slash"
+        },
+        11: {  # Shadow Fiend
+            "items": ["Shadow Blade", "BKB", "Butterfly", "Daedalus", "Aghanim's Shard"],
+            "skills": "Max Shadowraze, Necromastery second",
+            "talents": "10: +25 Damage, 15: +1.5s Requiem Fear, 20: +30% Shadowraze Damage, 25: -6s Shadowraze CD"
+        },
+        94: {  # Medusa
+            "items": ["Manta Style", "Skadi", "Butterfly", "Divine Rapier", "Linken's Sphere"],
+            "skills": "Max Split Shot, then Mana Shield, Mystic Snake last",
+            "talents": "10: +20 Attack Speed, 15: +1.5 Mana per Hit, 20: +1s Stone Gaze, 25: +3 Split Shot Targets"
+        }
+    }
+    
+    build = builds.get(hero_id, {
+        "items": ["Core items: BKB, situational items based on game"],
+        "skills": "Max main ability first, then utility",
+        "talents": "Check in-game for current meta talents"
+    })
+    
+    response = f"""
+🛠 <b>{hero_name} - Сборка</b>
+
+🎒 <b>Предметы:</b>
+"""
+    
+    for item in build["items"]:
+        response += f"• {item}\n"
+    
+    response += f"""
+⚡ <b>Прокачка способностей:</b>
+{build['skills']}
+
+🌟 <b>Таланты:</b>
+{build['talents']}
+
+<i>Сборка основана на текущей мете, адаптируйте под игру.</i>
+"""
+    
+    keyboard = InlineKeyboardBuilder()
+    keyboard.button(text="⬅️ Назад к ролям", callback_data="builds_back")
+    keyboard.button(text="📊 Статистика героя", callback_data=f"hero_stats_{hero_id}")
+    
+    await callback.message.edit_text(
+        response,
+        reply_markup=keyboard.as_markup(),
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+@dp.callback_query(F.data == "builds_back")
+async def builds_back(callback: types.CallbackQuery):
+    await builds_menu(callback.message)
+    await callback.answer()
+
+# ========== BEST HEROES ==========
+@dp.callback_query(F.data == "best_heroes")
+async def best_heroes(callback: types.CallbackQuery):
+    user = get_user(callback.from_user.id)
+    if not user or not user[2]:
+        await callback.answer("❌ Сначала привяжите профиль!")
+        return
+    
+    account_id = user[2]
+    await callback.answer("⏳ Анализирую героев...")
+    
+    # Получаем статистику по героям
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f"https://api.opendota.com/api/players/{account_id}/heroes",
+                timeout=10
+            ) as r:
+                if r.status == 200:
+                    heroes_data = await r.json()
+                    
+                    # Фильтруем героев с достаточным количеством игр
+                    valid_heroes = []
+                    for hero in heroes_data:
+                        games = hero.get('games', 0)
+                        wins = hero.get('win', 0)
+                        
+                        if games >= 3:  # Минимум 3 игры на герое
+                            winrate = (wins / games * 100) if games > 0 else 0
+                            valid_heroes.append({
+                                'hero_id': hero.get('hero_id', 0),
+                                'games': games,
+                                'wins': wins,
+                                'winrate': winrate
+                            })
+                    
+                    # Сортируем по винрейту
+                    valid_heroes.sort(key=lambda x: x['winrate'], reverse=True)
+                    
+                    # Получаем имена героев
+                    heroes = await get_heroes_data()
+                    
+                    response = "🏆 <b>Ваши лучшие герои:</b>\n\n"
+                    
+                    for i, hero in enumerate(valid_heroes[:10], 1):
+                        hero_name = heroes.get(str(hero['hero_id']), f"Герой {hero['hero_id']}")
+                        response += f"{i}. <b>{hero_name}</b>\n"
+                        response += f"   📊 {hero['winrate']:.1f}% ({hero['wins']}W-{hero['games']-hero['wins']}L)\n"
+                        response += f"   🎮 Игр: {hero['games']}\n\n"
+                    
+                    if not valid_heroes:
+                        response = "📭 Недостаточно данных по героям. Сыграйте больше игр!"
+                    
+                    keyboard = InlineKeyboardBuilder()
+                    keyboard.button(text="⬅️ Назад в профиль", callback_data="profile_back")
+                    
+                    await callback.message.edit_text(
+                        response,
+                        reply_markup=keyboard.as_markup(),
+                        parse_mode="HTML"
+                    )
+                else:
+                    await callback.message.answer("❌ Не удалось получить данные по героям.")
+    
+    except Exception as e:
+        logger.error(f"Best heroes error: {e}")
+        await callback.message.answer("❌ Ошибка при анализе героев.")
+
+# ========== DETAILED STATS ==========
+@dp.callback_query(F.data == "detailed_stats")
+async def detailed_stats(callback: types.CallbackQuery):
+    user = get_user(callback.from_user.id)
+    if not user or not user[2]:
+        await callback.answer("❌ Сначала привяжите профиль!")
+        return
+    
+    account_id = user[2]
+    await callback.answer("⏳ Получаю подробную статистику...")
+    
+    # Получаем разные виды статистики
+    player_data = await get_player_data(account_id)
+    matches = await get_matches(account_id, 50)  # 50 последних игр
+    winloss = await get_winloss(account_id)
+    
+    if not player_data:
+        await callback.message.answer("❌ Не удалось получить данные.")
+        return
+    
+    # Общая статистика
+    total_wins = winloss.get('win', 0) if winloss else 0
+    total_losses = winloss.get('lose', 0) if winloss else 0
+    total_matches = total_wins + total_losses
+    
+    # Статистика по последним играм
+    if matches:
+        recent_stats = {
+            'kills': 0, 'deaths': 0, 'assists': 0,
+            'duration': 0, 'wins': 0, 'total': len(matches)
+        }
+        
+        for match in matches:
+            recent_stats['kills'] += match.get('kills', 0)
+            recent_stats['deaths'] += match.get('deaths', 0)
+            recent_stats['assists'] += match.get('assists', 0)
+            recent_stats['duration'] += match.get('duration', 0)
+            
+            is_radiant = match.get('player_slot', 0) < 128
+            radiant_win = match.get('radiant_win', False)
+            if (is_radiant and radiant_win) or (not is_radiant and not radiant_win):
+                recent_stats['wins'] += 1
+        
+        avg_kills = recent_stats['kills'] / recent_stats['total']
+        avg_deaths = recent_stats['deaths'] / recent_stats['total']
+        avg_assists = recent_stats['assists'] / recent_stats['total']
+        avg_duration = recent_stats['duration'] / recent_stats['total'] / 60  # в минутах
+        recent_winrate = (recent_stats['wins'] / recent_stats['total'] * 100)
+        
+        kda = (avg_kills + avg_assists) / avg_deaths if avg_deaths > 0 else avg_kills + avg_assists
+    else:
+        avg_kills = avg_deaths = avg_assists = avg_duration = kda = 0
+        recent_winrate = 0
+    
+    response = f"""
+📊 <b>Подробная статистика</b>
+
+📈 <b>Общая:</b>
+• Игр: {total_matches}
+• Побед: {total_wins} ({total_wins/total_matches*100:.1f}% если есть данные)
+• Поражений: {total_losses}
+
+🎯 <b>Последние {len(matches) if matches else 0} игр:</b>
+• Winrate: {recent_winrate:.1f}%
+• Средний KDA: {avg_kills:.1f}/{avg_deaths:.1f}/{avg_assists:.1f} ({kda:.2f} ratio)
+• Средняя длительность: {avg_duration:.1f} мин
+
+⚔️ <b>Статистика за игру:</b>
+• Убийств в минуту: {avg_kills/avg_duration*60:.2f if avg_duration > 0 else 0}
+• Смертей в минуту: {avg_deaths/avg_duration*60:.2f if avg_duration > 0 else 0}
+• Помощей в минуту: {avg_assists/avg_duration*60:.2f if avg_duration > 0 else 0}
+"""
+    
+    keyboard = InlineKeyboardBuilder()
+    keyboard.button(text="⬅️ Назад", callback_data="profile_back")
+    
+    await callback.message.edit_text(
+        response,
+        reply_markup=keyboard.as_markup(),
+        parse_mode="HTML"
+    )
+
+# ========== BACK BUTTONS ==========
+@dp.callback_query(F.data == "profile_back")
+async def profile_back(callback: types.CallbackQuery):
+    await profile_cmd(callback.message)
+    await callback.answer()
+
+@dp.callback_query(F.data == "refresh_profile")
+async def refresh_profile(callback: types.CallbackQuery):
+    await callback.answer("🔄 Обновляю...")
+    await profile_cmd(callback.message)
+
+# ========== TOP PLAYERS ==========
+@dp.message(F.text == "🏆 Топ")
+async def top_players(message: types.Message):
+    leaders = get_leaderboard(15)
+    
+    if not leaders:
+        await message.answer("🏆 Топ пока пуст. Сыграйте в викторину!")
+        return
+    
+    response = "🏆 <b>Топ игроков бота:</b>\n\n"
+    
+    medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
+    
+    for i, (user_id, username, score) in enumerate(leaders, 1):
+        medal = medals[i-1] if i <= len(medals) else f"{i}."
+        name = username if username else f"ID {user_id}"
+        response += f"{medal} {name}: {score} очков\n"
+    
+    # Добавляем текущего пользователя если его нет в топе
+    user = get_user(message.from_user.id)
+    if user:
+        user_in_top = any(user[0] == leader[0] for leader in leaders[:10])
+        if not user_in_top:
+            response += f"\n👤 <b>Ваше место:</b> {user[4]} очков"
+    
+    await message.answer(response, parse_mode="HTML")
+
+# ========== FLASK SERVER FOR RENDER ==========
+from flask import Flask
+from threading import Thread
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "🤖 Dota2 Bot is running"
+
+@app.route('/health')
+def health():
+    return {"status": "healthy"}, 200
+
+@app.route('/ping')
+def ping():
+    return "pong", 200
+
+def run_flask():
+    import waitress
+    port = int(os.environ.get('PORT', 10000))
+    waitress.serve(app, host='0.0.0.0', port=port, threads=1)
+
+# ========== START BOT ==========
+async def main():
+    logger.info("🚀 Starting Dota2 Bot...")
+    
+    # Запускаем Flask в фоне
+    flask_thread = Thread(target=run_flask, daemon=True)
+    flask_thread.start()
+    logger.info(f"✅ Flask server started on port {os.environ.get('PORT', 10000)}")
+    
+    # Запускаем бота
+    await bot.delete_webhook(drop_pending_updates=True)
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    asyncio.run(main())
