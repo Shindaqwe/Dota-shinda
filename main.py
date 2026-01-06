@@ -21,6 +21,9 @@ from daily_quests_manager import DailyQuestsManager
 from tournament_manager import TournamentManager
 from game_mini_apps import MiniGamesManager
 from achievements_system import AchievementsSystem
+# Добавьте эти импорты если их нет:
+from aiogram import Router
+from aiogram.types import CallbackQuery
 
 # Инициализация менеджеров
 adv_stats = AdvancedStats()
@@ -1576,4 +1579,13 @@ async def tournaments_menu(message: types.Message):
         reply_markup=keyboard.as_markup(),
         parse_mode="HTML"
     )
+# Добавьте эти функции:
 
+@dp.message(F.text == "🎮 Игры")
+async def games_menu(message: types.Message):
+    await games_manager.show_menu(message)
+
+@dp.message(F.text == "🏅 Достижения")
+async def achievements_menu(message: types.Message):
+    user_achievements = achievements_system.get_user_achievements(message.from_user.id)
+    # Отображение достижений
