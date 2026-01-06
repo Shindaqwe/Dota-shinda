@@ -3,6 +3,7 @@ import asyncio
 import aiohttp
 import json
 import logging
+import traceback  # Добавьте этот импорт
 from datetime import datetime
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
@@ -169,17 +170,92 @@ async def extract_account_id(steam_input: str):
         return None
 
 async def get_player_data(account_id: int):
-    """Данные игрока"""
+    """Данные игрока с улучшенной обработкой ошибок"""
     try:
+        logger.info(f"🔄 Запрашиваю данные игрока с Account ID: {account_id}")
+        
         async with aiohttp.ClientSession() as session:
-            async with session.get(
-                f"https://api.opendota.com/api/players/{account_id}",
-                timeout=10
-            ) as r:
+            url = f"https://api.opendota.com/api/players/{account_id}"
+            logger.info(f"📡 Запрос к OpenDota: {url}")
+            
+            async with session.get(url, timeout=15) as r:
                 if r.status == 200:
-                    return await r.json()
-    except:
-        return None
+                    data = await r.json()
+                    logger.info(f"✅ Данные получены успешно")
+                    
+                    # Проверяем есть ли профиль в ответе
+                    if 'profile' in data:
+                        profile = data.get('profile', {})
+                        name = profile.get('personaname', f'Игрок {account_id}')
+                        logger.info(f"👤 Имя игрока: {name}")
+                    else:
+                        logger.warning(f"⚠️ В ответе нет профиля, создаем базовый")
+                        data['profile'] = {
+                            'personaname': f'Игрок {account_id}',
+                            'account_id': account_id,
+                            'steamid': str(76561197960265728 + account_id)
+                        }
+                    
+                    return data
+                    
+                elif r.status == 404:
+                    logger.warning(f"❌ Игрок {account_id} не найден в OpenDota")
+                    # Возвращаем базовые данные даже если игрок не найден
+                    return {
+                        'profile': {
+                            'personaname': f'Игрок {account_id}',
+                            'account_id': account_id,
+                            'steamid': str(76561197960265728 + account_id)
+                        },
+                        'mmr_estimate': {},
+                        'rank_tier': None
+                    }
+                    
+                elif r.status == 429:
+                    logger.warning(f"⚠️ Превышен лимит запросов к OpenDota (429)")
+                    return {
+                        'profile': {
+                            'personaname': f'Игрок {account_id} (ограничение API)',
+                            'account_id': account_id
+                        }
+                    }
+                    
+                else:
+                    logger.warning(f"⚠️ OpenDota вернул статус {r.status}")
+                    return {
+                        'profile': {
+                            'personaname': f'Игрок {account_id}',
+                            'account_id': account_id
+                        }
+                    }
+                    
+    except asyncio.TimeoutError:
+        logger.error(f"⏱️ Таймаут запроса к OpenDota для {account_id}")
+        return {
+            'profile': {
+                'personaname': f'Игрок {account_id} (таймаут)',
+                'account_id': account_id
+            }
+        }
+        
+    except aiohttp.ClientError as e:
+        logger.error(f"🌐 Ошибка сети при запросе к OpenDota: {e}")
+        return {
+            'profile': {
+                'personaname': f'Игрок {account_id} (ошибка сети)',
+                'account_id': account_id
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Неожиданная ошибка в get_player_data: {e}")
+        logger.error(traceback.format_exc())
+        return {
+            'profile': {
+                'personaname': f'Игрок {account_id}',
+                'account_id': account_id
+            }
+        }
 
 async def get_matches(account_id: int, limit=100):
     """Матчи игрока"""
@@ -325,17 +401,239 @@ def get_main_keyboard():
     return builder.as_markup(resize_keyboard=True)
 
 # ========== COMMAND HANDLERS ==========
+# ========== COMMAND HANDLERS ==========
 @dp.message(Command("start"))
 async def start_cmd(message: types.Message):
     await message.answer(
         "🎮 <b>Dota2 Stats Bot</b>\n\n"
-        "Отправьте ссылку на Steam профиль:\n"
-        "• https://steamcommunity.com/id/ваш_ник\n"
-        "• https://steamcommunity.com/profiles/76561198...\n"
-        "• Или просто SteamID\n\n"
+        "Отправьте ссылку на Steam профиль или Steam ID:\n"
+        "• https://steamcommunity.com/id/username\n"
+        "• https://steamcommunity.com/profiles/7656119xxxxxxxx\n"
+        "• Просто SteamID (например: 76561198012345678)\n"
+        "• Или Account ID (например: 12345678)\n\n"
         "Используйте кнопки меню 👇",
         reply_markup=get_main_keyboard()
     )
+
+# Заменяем старый обработчик на новый, более надежный
+@dp.message(F.text)
+async def handle_text_input(message: types.Message):
+    text = message.text.strip()
+    
+    # Пропускаем команды меню
+    menu_items = [
+        "👤 Профиль", "📊 Статистика", "🎮 Викторина", "👥 Друзья",
+        "⚔️ Мета", "🛠 Сборки", "📈 Анализ", "🎯 Квесты",
+        "🏆 Турниры", "🎮 Игры", "🏅 Достижения", "❤️ Поддержка"
+    ]
+    
+    if text in menu_items:
+        return  # Эти сообщения обрабатываются другими хендлерами
+    
+    # Проверяем, похоже ли сообщение на Steam ссылку или ID
+    is_steam_input = False
+    
+    # Проверяем разные форматы
+    if any(pattern in text.lower() for pattern in ['steamcommunity.com', 'steampowered.com']):
+        is_steam_input = True
+    elif text.isdigit() and (len(text) == 17 or 6 <= len(text) <= 10):  # SteamID64 или Account ID
+        is_steam_input = True
+    elif '/id/' in text or '/profiles/' in text:
+        is_steam_input = True
+    
+    if is_steam_input:
+        await handle_steam_profile(message)
+    else:
+        # Если не Steam ссылка, показываем подсказку
+        await message.answer(
+            "🤔 Похоже, это не Steam ссылка.\n\n"
+            "Отправьте ссылку на Steam профиль:\n"
+            "• https://steamcommunity.com/id/username\n"
+            "• https://steamcommunity.com/profiles/7656119xxxxxxxx\n"
+            "• Или просто Steam ID"
+        )
+
+async def handle_steam_profile(message: types.Message):
+    text = message.text.strip()
+    logger.info(f"Пытаюсь обработать Steam ссылку: {text}")
+    
+    await message.answer_chat_action("typing")
+    
+    # Пробуем разные способы извлечения Account ID
+    account_id = await extract_account_id_enhanced(text)
+    
+    if account_id:
+        logger.info(f"Успешно извлечен Account ID: {account_id}")
+        
+        # Получаем данные игрока
+        player_data = await get_player_data(account_id)
+        
+        if player_data:
+            profile = player_data.get('profile', {})
+            name = profile.get('personaname', 'Игрок')
+            
+            # Сохраняем пользователя
+            save_user(message.from_user.id, text, account_id, name)
+            
+            # Получаем дополнительную статистику
+            winloss = await get_winloss(account_id)
+            if winloss:
+                wins = winloss.get('win', 0)
+                losses = winloss.get('lose', 0)
+                total = wins + losses
+                winrate = (wins / total * 100) if total > 0 else 0
+                stats_text = f"📊 Статистика: {wins}W-{losses}L ({winrate:.1f}%)"
+            else:
+                stats_text = "📊 Статистика: не найдена"
+            
+            # MMR информация
+            mmr_estimate = player_data.get('mmr_estimate', {}).get('estimate', 'неизвестно')
+            
+            await message.answer(
+                f"✅ <b>Профиль успешно привязан!</b>\n\n"
+                f"👤 <b>{name}</b>\n"
+                f"🎯 MMR: {mmr_estimate}\n"
+                f"🆔 Account ID: <code>{account_id}</code>\n"
+                f"{stats_text}\n\n"
+                f"Теперь вы можете использовать все функции бота!",
+                parse_mode="HTML",
+                reply_markup=get_main_keyboard()
+            )
+        else:
+            # Сохраняем даже если не получили данные профиля
+            save_user(message.from_user.id, text, account_id, "")
+            
+            await message.answer(
+                f"✅ <b>Account ID привязан!</b>\n\n"
+                f"🆔 Account ID: <code>{account_id}</code>\n\n"
+                f"<i>Данные профиля могут быть скрыты или временно недоступны.\n"
+                f"Вы все равно можете использовать статистику по матчам.</i>",
+                parse_mode="HTML",
+                reply_markup=get_main_keyboard()
+            )
+    else:
+        error_msg = """
+❌ <b>Не удалось распознать Steam профиль</b>
+
+Возможные причины:
+1. Неверный формат ссылки
+2. Профиль скрыт или не существует
+3. Для vanity URL (/id/username) нужен STEAM_API_KEY
+
+<b>Попробуйте один из этих форматов:</b>
+
+1. <b>SteamID64:</b>
+   <code>76561198012345678</code>
+
+2. <b>Account ID:</b>
+   <code>12345678</code>
+
+3. <b>Профиль:</b>
+   <code>https://steamcommunity.com/profiles/76561198012345678</code>
+
+4. <b>Vanity URL (требуется STEAM_API_KEY):</b>
+   <code>https://steamcommunity.com/id/username</code>
+
+Проверьте .env файл на наличие STEAM_API_KEY
+        """
+        await message.answer(error_msg, parse_mode="HTML")
+
+# Улучшенная функция извлечения Account ID
+async def extract_account_id_enhanced(steam_input: str):
+    """Улучшенная функция извлечения Account ID"""
+    try:
+        steam_input = steam_input.strip()
+        logger.info(f"Извлекаем Account ID из: {steam_input}")
+        
+        # Убираем параметры URL
+        if "?" in steam_input:
+            steam_input = steam_input.split("?")[0]
+        
+        # Если это уже Account ID (маленькое число 6-10 цифр)
+        if steam_input.isdigit():
+            num = int(steam_input)
+            # Account ID обычно в диапазоне 6-10 цифр
+            if 100000 <= num <= 9999999999:
+                logger.info(f"Найден Account ID напрямую: {num}")
+                return num
+            # SteamID64 (17 цифр)
+            elif 76561197960265728 <= num <= 76561199999999999:
+                account_id = steam64_to_account_id(num)
+                logger.info(f"Конвертирован SteamID64: {num} -> {account_id}")
+                return account_id
+        
+        # Очищаем URL
+        steam_input = steam_input.rstrip("/")
+        
+        # 1. Профиль (/profiles/)
+        if "/profiles/" in steam_input.lower():
+            try:
+                # Извлекаем цифры после /profiles/
+                import re
+                match = re.search(r'/profiles/(\d+)', steam_input, re.IGNORECASE)
+                if match:
+                    steam64 = int(match.group(1))
+                    account_id = steam64_to_account_id(steam64)
+                    logger.info(f"Извлечен из профиля: {steam64} -> {account_id}")
+                    return account_id
+            except (ValueError, AttributeError) as e:
+                logger.error(f"Ошибка парсинга профиля: {e}")
+        
+        # 2. Vanity URL (/id/)
+        elif "/id/" in steam_input.lower():
+            if not STEAM_API_KEY:
+                logger.warning("STEAM_API_KEY не задан для Vanity URL")
+                return None
+            
+            try:
+                # Извлекаем имя пользователя
+                parts = steam_input.lower().split("/id/")
+                if len(parts) > 1:
+                    vanity = parts[1].split("/")[0]
+                    logger.info(f"Пытаюсь разрешить Vanity URL: {vanity}")
+                    
+                    async with aiohttp.ClientSession() as session:
+                        url = "https://api.steampowered.com/ISteamUser/ResolveVanityURL/v0001/"
+                        params = {'key': STEAM_API_KEY, 'vanityurl': vanity}
+                        
+                        async with session.get(url, params=params, timeout=10) as r:
+                            if r.status == 200:
+                                data = await r.json()
+                                logger.info(f"Steam API ответ: {data}")
+                                
+                                if data.get('response', {}).get('success') == 1:
+                                    steam64 = int(data['response']['steamid'])
+                                    account_id = steam64_to_account_id(steam64)
+                                    logger.info(f"Разрешено {vanity} -> {steam64} -> {account_id}")
+                                    return account_id
+                                else:
+                                    logger.warning(f"Steam API не смог разрешить {vanity}")
+                                    return None
+            except Exception as e:
+                logger.error(f"Ошибка разрешения Vanity URL: {e}")
+                return None
+        
+        # 3. Просто SteamID64 в URL
+        elif "steamcommunity.com" in steam_input.lower():
+            # Пробуем найти цифры в URL
+            import re
+            matches = re.findall(r'\d{17,}', steam_input)
+            if matches:
+                try:
+                    steam64 = int(matches[0])
+                    if steam64 > 76561197960265728:
+                        account_id = steam64_to_account_id(steam64)
+                        logger.info(f"Найден SteamID64 в URL: {steam64} -> {account_id}")
+                        return account_id
+                except ValueError:
+                    pass
+        
+        logger.warning(f"Не удалось извлечь Account ID из: {steam_input}")
+        return None
+        
+    except Exception as e:
+        logger.error(f"Ошибка extract_account_id_enhanced: {e}")
+        return None
 
 @dp.message(F.text.contains("steamcommunity.com") | F.text.regexp(r'^\d+$') | F.text.contains("/id/"))
 async def handle_steam_input(message: types.Message):
