@@ -1660,3 +1660,24 @@ async def achievements_menu(message: types.Message):
         response += f"   Награда: {ach.get('reward', 0)} очков\n\n"
     
     await message.answer(response, parse_mode="HTML")
+
+@dp.callback_query(F.data == "mini_game_tic_tac_toe")
+async def mini_game_tic_tac_toe_handler(callback: types.CallbackQuery):
+    # Пока что просто сообщение
+    await callback.message.answer("🎮 Крестики-нолики будут добавлены в следующем обновлении!")
+    await callback.answer()
+
+@dp.callback_query(F.data == "mini_game_random_hero")
+async def mini_game_random_hero_handler(callback: types.CallbackQuery):
+    # Случайный герой
+    with open('hero_names.json', 'r', encoding='utf-8') as f:
+        heroes = json.load(f)
+    
+    hero_id, hero_name = random.choice(list(heroes.items()))
+    await callback.message.answer(f"🎲 Ваш случайный герой: <b>{hero_name}</b> (ID: {hero_id})", parse_mode="HTML")
+    await callback.answer()
+
+@dp.callback_query(F.data == "back_to_main")
+async def back_to_main_handler(callback: types.CallbackQuery):
+    await callback.message.answer("Возвращаемся в главное меню.", reply_markup=get_main_keyboard())
+    await callback.answer()
