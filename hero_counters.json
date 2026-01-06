@@ -8,8 +8,8 @@
     },
     "Phantom Assassin": {
         "strong_against": ["Sniper", "Drow Ranger", "Crystal Maiden"],
-        "weak_against": ["Silver Edge", "Heaven's Halberd", "Bloodthorn", "MKB"],
-        "counter_items": ["Silver Edge", "Heaven's Halberd", "Ghost Scepter", "Blade Mail"],
+    "weak_against": ["Axe", "Razor", "Medusa", "Bloodseeker"],
+         "counter_items": ["Silver Edge", "Heaven's Halberd", "Ghost Scepter", "Blade Mail"]
         "lanning_tips": "Харрасьте на лайне, не давайте фармить",
         "teamfight_tips": "Контролируйте в начале фита, сохраняйте контроль для неё"
     },
