@@ -1,0 +1,72 @@
+{
+    "1": {
+        "name": "Anti-Mage",
+        "primary_roles": ["Керри"],
+        "secondary_roles": ["Мидер"],
+        "builds": {
+            "Керри": {
+                "items": ["Battle Fury", "Manta Style", "Abyssal Blade", "Butterfly", "Eye of Skadi", "Aghanim's Scepter"],
+                "skills": "1. Blink, 2. Mana Break, 3. Spell Shield, 4. Mana Void",
+                "skill_build": "Max Blink first, then Mana Break, Spell Shield last",
+                "talents": "10: +15 Damage, 15: +0.4 Mana Burn, 20: -2s Blink CD, 25: +125 Blink Range",
+                "playstyle": "Фарм до Battle Fury, затем split push"
+            }
+        }
+    },
+    "11": {
+        "name": "Shadow Fiend",
+        "primary_roles": ["Мидер"],
+        "secondary_roles": ["Керри"],
+        "builds": {
+            "Мидер": {
+                "items": ["Shadow Blade", "Black King Bar", "Butterfly", "Daedalus", "Aghanim's Shard"],
+                "skills": "1. Shadowraze, 2. Necromastery, 3. Presence of the Dark Lord, 4. Requiem of Souls",
+                "skill_build": "Max Shadowraze, then Necromastery",
+                "talents": "10: +25 Damage, 15: +1.5s Requiem Fear, 20: +30% Shadowraze Damage, 25: -6s Shadowraze CD",
+                "playstyle": "Доминируйте линию, убивайте нейтралов, участвуйте в фитах"
+            },
+            "Керри": {
+                "items": ["Manta Style", "Skadi", "Butterfly", "Satanic", "Aghanim's Scepter"],
+                "skills": "То же что и мидер",
+                "skill_build": "Max Necromastery first для фарма",
+                "talents": "10: +25 Damage, 15: +12% Lifesteal, 20: +30% Shadowraze Damage, 25: -6s Shadowraze CD",
+                "playstyle": "Фарм ориентированный стиль"
+            }
+        }
+    },
+    "5": {
+        "name": "Crystal Maiden",
+        "primary_roles": ["Саппорт", "Хард саппорт"],
+        "secondary_roles": [],
+        "builds": {
+            "Саппорт": {
+                "items": ["Tranquil Boots", "Glimmer Cape", "Force Staff", "Aghanim's Scepter", "Blink Dagger"],
+                "skills": "1. Crystal Nova, 2. Frostbite, 3. Arcane Aura, 4. Freezing Field",
+                "skill_build": "1-2 точки в Arcane Aura, затем max Crystal Nova",
+                "talents": "10: +150 Health, 15: +100 Crystal Nova Damage, 20: +100 Attack Speed, 25: Freezing Field Grants Invisibility",
+                "playstyle": "Харрас на лайне, роуминг, конттроль в фитах"
+            }
+        }
+    },
+    "86": {
+        "name": "Rubick",
+        "primary_roles": ["Саппорт", "Мидер"],
+        "secondary_roles": [],
+        "builds": {
+            "Саппорт": {
+                "items": ["Arcane Boots", "Aether Lens", "Blink Dagger", "Aghanim's Scepter", "Force Staff"],
+                "skills": "1. Telekinesis, 2. Fade Bolt, 3. Arcane Supremacy, 4. Spell Steal",
+                "skill_build": "Max Fade Bolt first для харраса",
+                "talents": "10: +75 Cast Range, 15: +1.5s Telekinesis Lift, 20: +0.3 Fade Bolt Damage Reduction, 25: -4s Telekinesis CD",
+                "playstyle": "Увороты, стил спеллов, контроль в фитах"
+            },
+            "Мидер": {
+                "items": ["Null Talisman", "Bottle", "Aghanim's Scepter", "Blink Dagger", "Octarine Core"],
+                "skills": "То же что и саппорт",
+                "skill_build": "Max Fade Bolt for lane dominance",
+                "talents": "10: +75 Cast Range, 15: +1.5s Telekinesis Lift, 20: +0.3 Fade Bolt Damage Reduction, 25: -4s Telekinesis CD",
+                "playstyle": "Доминирование на миде через харрас"
+            }
+        }
+    }
+}
