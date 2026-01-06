@@ -1,0 +1,39 @@
+{
+    "themes": {
+        "default": {
+            "name": "Classic Dota",
+            "bg_color": "#1a1a2e",
+            "text_color": "#ffffff",
+            "accent_color": "#4CAF50",
+            "emoji_style": "default"
+        },
+        "dark": {
+            "name": "Dark Mode",
+            "bg_color": "#0d1117",
+            "text_color": "#c9d1d9",
+            "accent_color": "#58a6ff",
+            "emoji_style": "minimal"
+        },
+        "ti": {
+            "name": "TI Theme",
+            "bg_color": "#0a2e5c",
+            "text_color": "#ffd700",
+            "accent_color": "#ff6b6b",
+            "emoji_style": "gold"
+        },
+        "radiant": {
+            "name": "Radiant",
+            "bg_color": "#2e7d32",
+            "text_color": "#e8f5e9",
+            "accent_color": "#ff9800",
+            "emoji_style": "nature"
+        },
+        "dire": {
+            "name": "Dire",
+            "bg_color": "#b71c1c",
+            "text_color": "#ffebee",
+            "accent_color": "#212121",
+            "emoji_style": "fire"
+        }
+    }
+}
