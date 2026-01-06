@@ -188,3 +188,21 @@ class MiniGamesManager:
    🅰️   🅱️   🅲️
 """
         return formatted
+
+    async def show_menu(self, message):
+        """Показать меню мини-игр"""
+        from aiogram.utils.keyboard import InlineKeyboardBuilder
+        from aiogram.types import InlineKeyboardButton
+        
+        keyboard = InlineKeyboardBuilder()
+        keyboard.button(text="❌⭕ Крестики-нолики", callback_data="mini_game_tic_tac_toe")
+        keyboard.button(text="🎲 Случайный герой", callback_data="mini_game_random_hero")
+        keyboard.button(text="🔙 Назад", callback_data="back_to_main")
+        keyboard.adjust(1)
+        
+        await message.answer(
+            "🎮 <b>Мини-игры</b>\n\n"
+            "Выберите игру:",
+            reply_markup=keyboard.as_markup(),
+            parse_mode="HTML"
+        )
