@@ -1097,7 +1097,7 @@ async def builds_by_role(callback: types.CallbackQuery):
     )
     await callback.answer()
 
-    @dp.callback_query(F.data.startswith("hero_build_"))
+@dp.callback_query(F.data.startswith("hero_build_"))
 async def hero_build_display(callback: types.CallbackQuery):
     hero_id = callback.data.split("_")[2]
     
