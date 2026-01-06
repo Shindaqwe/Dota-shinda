@@ -1,0 +1,50 @@
+{
+    "quests": [
+        {
+            "id": 1,
+            "type": "games_played",
+            "title": "🎮 Игрок дня",
+            "description": "Сыграть 3 игры",
+            "target": 3,
+            "reward": 50,
+            "category": "daily"
+        },
+        {
+            "id": 2,
+            "type": "wins",
+            "title": "🏆 Победитель",
+            "description": "Выиграть 2 игры",
+            "target": 2,
+            "reward": 100,
+            "category": "daily"
+        },
+        {
+            "id": 3,
+            "type": "hero_specific",
+            "title": "⚔️ Мастер героя",
+            "description": "Сыграть на Invoker",
+            "target": 1,
+            "hero_id": 74,
+            "reward": 75,
+            "category": "daily"
+        },
+        {
+            "id": 4,
+            "type": "kda",
+            "title": "⭐ Идеальная игра",
+            "description": "Закончить с KDA > 5.0",
+            "target": 1,
+            "reward": 80,
+            "category": "daily"
+        },
+        {
+            "id": 5,
+            "type": "role_specific",
+            "title": "💫 Саппорт миссия",
+            "description": "Сыграть 2 игры на саппорте",
+            "target": 2,
+            "reward": 60,
+            "category": "daily"
+        }
+    ]
+}
