@@ -7,6 +7,7 @@ import traceback  # Добавьте этот импорт
 from datetime import datetime
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
+from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
@@ -457,7 +458,7 @@ async def handle_steam_profile(message: types.Message):
     text = message.text.strip()
     logger.info(f"Пытаюсь обработать Steam ссылку: {text}")
     
-    await message.answer_chat_action("typing")
+    await message.chat_action("typing")
     
     # Пробуем разные способы извлечения Account ID
     account_id = await extract_account_id_enhanced(text)
@@ -640,7 +641,7 @@ async def handle_steam_input(message: types.Message):
     text = message.text.strip()
     logger.info(f"Получена Steam ссылка: {text}")
     
-    await message.answer_chat_action("typing")
+    await message.chat_action("typing")
     
     account_id = await extract_account_id(text)
     logger.info(f"Извлечен Account ID: {account_id}")
@@ -689,7 +690,7 @@ async def profile_cmd(message: types.Message):
         return
     
     account_id = user[2]
-    await message.answer_chat_action("typing")
+    await message.chat_action("typing")
     
     # Получаем данные
     player_data = await get_player_data(account_id)
@@ -803,7 +804,7 @@ async def stats_cmd(message: types.Message):
         return
     
     account_id = user[2]
-    await message.answer_chat_action("typing")
+    await message.chat_action("typing")
     
     # Получаем общую статистику
     winloss = await get_winloss(account_id)
@@ -1226,7 +1227,7 @@ async def compare_friend(callback: types.CallbackQuery):
 # ========== META HEROES ==========
 @dp.message(F.text == "⚔️ Мета")
 async def meta_cmd(message: types.Message):
-    await message.answer_chat_action("typing")
+    await message.chat_action("typing")
     
     try:
         async with aiohttp.ClientSession() as session:
@@ -1983,3 +1984,26 @@ async def mini_game_random_hero_handler(callback: types.CallbackQuery):
 async def back_to_main_handler(callback: types.CallbackQuery):
     await callback.message.answer("Возвращаемся в главное меню.", reply_markup=get_main_keyboard())
     await callback.answer()
+
+import re
+
+def fix_chat_action_errors(file_path):
+    """Ищет и исправляет все answer_chat_action на chat_action"""
+    with open(file_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    # Используем регулярное выражение для поиска
+    pattern = r'await message\.answer_chat_action\("typing"\)'
+    replacement = 'await message.chat_action("typing")'
+    
+    # Заменяем все вхождения
+    fixed_content = re.sub(pattern, replacement, content)
+    
+    # Записываем обратно
+    with open(file_path, 'w', encoding='utf-8') as f:
+        f.write(fixed_content)
+    
+    print(f"✅ Исправлены все answer_chat_action в {file_path}")
+
+# Запустите эту функцию для вашего файла
+fix_chat_action_errors('main.py')
