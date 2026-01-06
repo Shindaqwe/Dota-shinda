@@ -1054,36 +1054,29 @@ async def builds_by_role(callback: types.CallbackQuery):
         await search_hero(callback, FSMContext)
         return
     
-    # Определяем какие герои относятся к роли
-    role_heroes = {
-        "carry": [
-            (1, "Anti-Mage"), (8, "Juggernaut"), (44, "Phantom Assassin"),
-            (94, "Medusa"), (109, "Terrorblade"), (67, "Spectre"),
-            (41, "Faceless Void"), (70, "Ursa"), (81, "Chaos Knight")
-        ],
-        "mid": [
-            (11, "Shadow Fiend"), (46, "Templar Assassin"), (74, "Invoker"),
-            (106, "Ember Spirit"), (126, "Void Spirit"), (35, "Sniper"),
-            (32, "Riki"), (39, "Queen of Pain"), (52, "Leshrac")
-        ],
-        "offlane": [
-            (18, "Sven"), (69, "Doom"), (99, "Bristleback"),
-            (78, "Brewmaster"), (97, "Magnus"), (129, "Mars"),
-            (7, "Earthshaker"), (55, "Dark Seer"), (96, "Centaur Warrunner")
-        ],
-        "support": [
-            (5, "Crystal Maiden"), (86, "Rubick"), (111, "Oracle"),
-            (120, "Pangolier"), (90, "Keeper of the Light"), (20, "Vengeful Spirit"),
-            (33, "Enigma"), (64, "Jakiro"), (101, "Skywrath Mage")
-        ],
-        "hard_support": [
-            (20, "Vengeful Spirit"), (45, "Pugna"), (50, "Dazzle"),
-            (13, "Puck"), (105, "Techies"), (30, "Witch Doctor"),
-            (37, "Warlock"), (43, "Death Prophet"), (85, "Undying")
-        ]
+    # Загружаем данные из hero_builds.json
+    try:
+        with open('hero_builds.json', 'r', encoding='utf-8') as f:
+            heroes_builds = json.load(f)
+    except FileNotFoundError:
+        await callback.message.answer("❌ Файл сборок не найден.")
+        return
+    
+    role_names = {
+        "carry": "Керри",
+        "mid": "Мидер",
+        "offlane": "Оффлейнер",
+        "support": "Саппорт",
+        "hard_support": "Хард саппорт"
     }
     
-    heroes = role_heroes.get(role_id, [])
+    role_name = role_names.get(role_id, role_id)
+    
+    # Ищем героев с этой ролью
+    heroes = []
+    for hero_id, hero_data in heroes_builds.items():
+        if role_name in hero_data.get('primary_roles', []) or role_name in hero_data.get('secondary_roles', []):
+            heroes.append((int(hero_id), hero_data.get('name', f"Герой {hero_id}")))
     
     if not heroes:
         await callback.answer("❌ Нет героев для этой роли")
@@ -1096,90 +1089,55 @@ async def builds_by_role(callback: types.CallbackQuery):
     keyboard.button(text="⬅️ Назад", callback_data="builds_back")
     keyboard.adjust(1)
     
-    role_names = {
-        "carry": "Керри",
-        "mid": "Мидер",
-        "offlane": "Оффлейнер",
-        "support": "Саппорт",
-        "hard_support": "Хард саппорт"
-    }
-    
     await callback.message.edit_text(
-        f"🛠 <b>Герои ({role_names.get(role_id, role_id)}):</b>\n\n"
+        f"🛠 <b>Герои ({role_name}):</b>\n\n"
         f"Выберите героя для просмотра сборки:",
         reply_markup=keyboard.as_markup(),
         parse_mode="HTML"
     )
     await callback.answer()
 
-@dp.callback_query(F.data.startswith("hero_build_"))
+  @dp.callback_query(F.data.startswith("hero_build_"))
 async def hero_build_display(callback: types.CallbackQuery):
-    hero_id = int(callback.data.split("_")[2])
+    hero_id = callback.data.split("_")[2]
     
-    # Получаем данные героя
-    with open('hero_names.json', 'r', encoding='utf-8') as f:
-        heroes = json.load(f)
+    # Загружаем данные из hero_builds.json
+    try:
+        with open('hero_builds.json', 'r', encoding='utf-8') as f:
+            heroes_builds = json.load(f)
+    except FileNotFoundError:
+        await callback.message.answer("❌ Файл сборок не найден.")
+        return
     
-    hero_name = heroes.get(str(hero_id), f"Герой {hero_id}")
+    hero_data = heroes_builds.get(hero_id)
     
-    # Примерные сборки (в реальном боте нужно загружать из файла)
-    builds_db = {
-        1: {  # Anti-Mage
-            "roles": ["Керри", "Мидер"],
-            "carry": {
-                "items": ["Battle Fury", "Manta Style", "Abyssal Blade", "Butterfly", "Eye of Skadi"],
-                "skills": "1. Blink, 2. Mana Break, 3. Spell Shield, 4. Mana Void",
-                "skill_build": "Max Blink first, then Mana Break, Spell Shield last",
-                "talents": "10: +15 Damage, 15: +0.4 Mana Burn, 20: -2s Blink CD, 25: +125 Blink Range",
-                "playstyle": "Фарм до Battle Fury, затем split push"
-            }
-        },
-        11: {  # Shadow Fiend
-            "roles": ["Мидер", "Керри"],
-            "mid": {
-                "items": ["Shadow Blade", "Black King Bar", "Butterfly", "Daedalus", "Aghanim's Shard"],
-                "skills": "1. Shadowraze, 2. Necromastery, 3. Presence of the Dark Lord, 4. Requiem of Souls",
-                "skill_build": "Max Shadowraze, then Necromastery",
-                "talents": "10: +25 Damage, 15: +1.5s Requiem Fear, 20: +30% Shadowraze Damage, 25: -6s Shadowraze CD",
-                "playstyle": "Доминируйте линию, убивайте нейтралов, участвуйте в фитах"
-            }
-        },
-        5: {  # Crystal Maiden
-            "roles": ["Саппорт", "Хард саппорт"],
-            "support": {
-                "items": ["Tranquil Boots", "Glimmer Cape", "Force Staff", "Aghanim's Scepter", "Blink Dagger"],
-                "skills": "1. Crystal Nova, 2. Frostbite, 3. Arcane Aura, 4. Freezing Field",
-                "skill_build": "1-2 точки в Arcane Aura, затем max Crystal Nova",
-                "talents": "10: +150 Health, 15: +100 Crystal Nova Damage, 20: +100 Attack Speed, 25: Freezing Field Grants Invisibility",
-                "playstyle": "Харрас на лайне, роуминг, контроль в фитах"
-            }
-        },
-        86: {  # Rubick
-            "roles": ["Саппорт", "Мидер"],
-            "support": {
-                "items": ["Arcane Boots", "Aether Lens", "Blink Dagger", "Aghanim's Scepter", "Force Staff"],
-                "skills": "1. Telekinesis, 2. Fade Bolt, 3. Arcane Supremacy, 4. Spell Steal",
-                "skill_build": "Max Fade Bolt first для харраса",
-                "talents": "10: +75 Cast Range, 15: +1.5s Telekinesis Lift, 20: +0.3 Fade Bolt Damage Reduction, 25: -4s Telekinesis CD",
-                "playstyle": "Увороты, стил спеллов, контроль в фитах"
-            }
-        }
-    }
+    if not hero_data:
+        await callback.message.answer(f"❌ Сборки для героя с ID {hero_id} не найдены.")
+        return
     
-    hero_data = builds_db.get(hero_id, {
-        "roles": ["Основная"],
-        "Основная": {
-            "items": ["Core items based on situation", "Black King Bar", "Aghanim's Scepter"],
-            "skills": "Check in-game for ability build",
-            "skill_build": "Max main ability first",
-            "talents": "Check in-game for current talents",
-            "playstyle": "Adapt to the game situation"
-        }
-    })
+    hero_name = hero_data.get('name', f"Герой {hero_id}")
     
-    # Показываем первую доступную роль
-    role = hero_data["roles"][0]
-    build = hero_data.get(role, hero_data["Основная"])
+    # Получаем первую роль из списка
+    roles = hero_data.get('primary_roles', [])
+    if not roles:
+        roles = hero_data.get('secondary_roles', [])
+    
+    if not roles:
+        await callback.message.answer(f"❌ Для героя {hero_name} не указаны роли.")
+        return
+    
+    role = roles[0]
+    builds = hero_data.get('builds', {})
+    
+    if role not in builds:
+        # Пытаемся найти любую сборку
+        if builds:
+            role = list(builds.keys())[0]
+        else:
+            await callback.message.answer(f"❌ Для героя {hero_name} нет сборок.")
+            return
+    
+    build = builds[role]
     
     response = f"""
 🛠 <b>{hero_name} ({role})</b>
@@ -1187,31 +1145,30 @@ async def hero_build_display(callback: types.CallbackQuery):
 🎒 <b>Предметы:</b>
 """
     
-    for item in build["items"]:
+    for item in build.get("items", []):
         response += f"• {item}\n"
     
     response += f"""
 ⚡ <b>Способности:</b>
-{build['skills']}
+{build.get('skills', 'Не указано')}
 
 📈 <b>Прокачка:</b>
-{build['skill_build']}
+{build.get('skill_build', 'Не указано')}
 
 🌟 <b>Таланты:</b>
-{build['talents']}
+{build.get('talents', 'Не указано')}
 
 🎮 <b>Стиль игры:</b>
-{build['playstyle']}
+{build.get('playstyle', 'Не указано')}
 
 <i>Сборка основана на текущей мете</i>
 """
     
     # Кнопки для других ролей если есть
     keyboard = InlineKeyboardBuilder()
-    if len(hero_data["roles"]) > 1:
-        for other_role in hero_data["roles"]:
-            if other_role != role:
-                keyboard.button(text=f"🎯 {other_role}", callback_data=f"hero_role_{hero_id}_{other_role}")
+    other_roles = [r for r in builds.keys() if r != role]
+    for other_role in other_roles:
+        keyboard.button(text=f"🎯 {other_role}", callback_data=f"hero_role_{hero_id}_{other_role}")
     
     keyboard.button(text="⬅️ Назад", callback_data="builds_back")
     keyboard.adjust(2)
@@ -1221,19 +1178,77 @@ async def hero_build_display(callback: types.CallbackQuery):
         reply_markup=keyboard.as_markup(),
         parse_mode="HTML"
     )
-    await callback.answer()
+    await callback.answer() 
+
 
 @dp.callback_query(F.data.startswith("hero_role_"))
 async def hero_role_switch(callback: types.CallbackQuery):
     parts = callback.data.split("_")
-    hero_id = int(parts[2])
+    hero_id = parts[2]
     role = parts[3]
     
-    # Аналогично hero_build_display но с указанной ролью
-    await callback.answer(f"Загружаю сборку для роли {role}...")
-    # Здесь нужно реализовать логику аналогичную hero_build_display но с указанной ролью
-    await callback.message.answer(f"Сборка для роли {role} будет добавлена в следующем обновлении!")
+    # Загружаем данные из hero_builds.json
+    try:
+        with open('hero_builds.json', 'r', encoding='utf-8') as f:
+            heroes_builds = json.load(f)
+    except FileNotFoundError:
+        await callback.message.answer("❌ Файл сборок не найден.")
+        return
+    
+    hero_data = heroes_builds.get(hero_id)
+    if not hero_data:
+        await callback.message.answer("❌ Герой не найден.")
+        return
+    
+    hero_name = hero_data.get('name', f"Герой {hero_id}")
+    builds = hero_data.get('builds', {})
+    
+    if role not in builds:
+        await callback.message.answer(f"❌ Для героя {hero_name} нет сборки для роли {role}.")
+        return
+    
+    build = builds[role]
+    
+    response = f"""
+🛠 <b>{hero_name} ({role})</b>
 
+🎒 <b>Предметы:</b>
+"""
+    
+    for item in build.get("items", []):
+        response += f"• {item}\n"
+    
+    response += f"""
+⚡ <b>Способности:</b>
+{build.get('skills', 'Не указано')}
+
+📈 <b>Прокачка:</b>
+{build.get('skill_build', 'Не указано')}
+
+🌟 <b>Таланты:</b>
+{build.get('talents', 'Не указано')}
+
+🎮 <b>Стиль игры:</b>
+{build.get('playstyle', 'Не указано')}
+
+<i>Сборка основана на текущей мете</i>
+"""
+    
+    keyboard = InlineKeyboardBuilder()
+    other_roles = [r for r in builds.keys() if r != role]
+    for other_role in other_roles:
+        keyboard.button(text=f"🎯 {other_role}", callback_data=f"hero_role_{hero_id}_{other_role}")
+    
+    keyboard.button(text="⬅️ Назад", callback_data=f"hero_build_{hero_id}")
+    keyboard.adjust(2)
+    
+    await callback.message.edit_text(
+        response,
+        reply_markup=keyboard.as_markup(),
+        parse_mode="HTML"
+    )
+    await callback.answer()
+    
 @dp.callback_query(F.data == "builds_back")
 async def builds_back(callback: types.CallbackQuery):
     await builds_menu(callback.message)
@@ -1591,3 +1606,57 @@ async def games_menu(message: types.Message):
 async def achievements_menu(message: types.Message):
     user_achievements = achievements_system.get_user_achievements(message.from_user.id)
     # Отображение достижений
+
+@dp.callback_query(F.data == "mini_game_tic_tac_toe")
+async def mini_game_tic_tac_toe_handler(callback: types.CallbackQuery):
+    # Пока что просто сообщение
+    await callback.message.answer("🎮 Крестики-нолики будут добавлены в следующем обновлении!")
+    await callback.answer()
+
+@dp.callback_query(F.data == "mini_game_random_hero")
+async def mini_game_random_hero_handler(callback: types.CallbackQuery):
+    # Случайный герой
+    with open('hero_names.json', 'r', encoding='utf-8') as f:
+        heroes = json.load(f)
+    
+    hero_id, hero_name = random.choice(list(heroes.items()))
+    await callback.message.answer(f"🎲 Ваш случайный герой: <b>{hero_name}</b> (ID: {hero_id})", parse_mode="HTML")
+    await callback.answer()
+
+@dp.callback_query(F.data == "back_to_main")
+async def back_to_main_handler(callback: types.CallbackQuery):
+    await callback.message.answer("Возвращаемся в главное меню.", reply_markup=get_main_keyboard())
+    await callback.answer()
+
+@dp.message(F.text == "🏅 Достижения")
+async def achievements_menu(message: types.Message):
+    user_id = message.from_user.id
+    achievements_data = achievements_system.get_user_achievements(user_id)
+    
+    if not achievements_data:
+        await message.answer("❌ Не удалось загрузить достижения.")
+        return
+    
+    achievements = achievements_data.get('achievements', [])
+    total_unlocked = achievements_data.get('total_unlocked', 0)
+    total_achievements = achievements_data.get('total_achievements', 0)
+    completion_percent = achievements_data.get('completion_percent', 0)
+    total_score = achievements_data.get('total_score', 0)
+    
+    response = f"""
+🏅 <b>Ваши достижения</b>
+
+📊 Прогресс: {total_unlocked}/{total_achievements} ({completion_percent:.1f}%)
+🏆 Очки: {total_score}
+
+"""
+    
+    for ach in achievements:
+        status = "✅" if ach['unlocked'] else "⏳"
+        response += f"{status} {ach.get('icon', '🏅')} <b>{ach.get('title', 'Без названия')}</b>\n"
+        response += f"   {ach.get('description', '')}\n"
+        if not ach['unlocked'] and ach.get('target', 0) > 0:
+            response += f"   Прогресс: {ach.get('progress', 0)}/{ach.get('target', 0)}\n"
+        response += f"   Награда: {ach.get('reward', 0)} очков\n\n"
+    
+    await message.answer(response, parse_mode="HTML")
