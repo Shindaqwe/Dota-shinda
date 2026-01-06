@@ -1,0 +1,23 @@
+{
+    "Shadow Fiend": {
+        "strong_against": ["Storm Spirit", "Puck", "Lina"],
+        "weak_against": ["Templar Assassin", "Viper", "Huskar", "Razor"],
+        "counter_items": ["Orchid Malevolence", "Heaven's Halberd", "Blade Mail", "BKB"],
+        "lanning_tips": "Давите его на 3 уровне, не давайте фармить",
+        "teamfight_tips": "Фокусируйте первым, у него мало хп"
+    },
+    "Phantom Assassin": {
+        "strong_against": ["Sniper", "Drow Ranger", "Crystal Maiden"],
+        "weak_against": ["Silver Edge", "Heaven's Halberd", "Bloodthorn", "MKB"],
+        "counter_items": ["Silver Edge", "Heaven's Halberd", "Ghost Scepter", "Blade Mail"],
+        "lanning_tips": "Харрасьте на лайне, не давайте фармить",
+        "teamfight_tips": "Контролируйте в начале фита, сохраняйте контроль для неё"
+    },
+    "Anti-Mage": {
+        "strong_against": ["Medusa", "Storm Spirit", "Leshrac"],
+        "weak_against": ["Troll Warlord", "Ursa", "Bloodseeker"],
+        "counter_items": ["Abyssal Blade", "Scythe of Vyse", "Orchid Malevolence"],
+        "lanning_tips": "Давите раннюю игру, он слаб до Battle Fury",
+        "teamfight_tips": "Не давайте дожить до лейта, заканчивайте игру рано"
+    }
+}
