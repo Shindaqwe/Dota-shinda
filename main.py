@@ -25,6 +25,8 @@ from achievements_system import AchievementsSystem
 from aiogram import Router
 from aiogram.types import CallbackQuery
 
+
+
 # Инициализация менеджеров
 adv_stats = AdvancedStats()
 quests_manager = DailyQuestsManager()
