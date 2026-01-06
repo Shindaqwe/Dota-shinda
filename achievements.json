@@ -1,0 +1,57 @@
+{
+    "achievements": [
+        {
+            "id": "first_blood",
+            "title": "🩸 First Blood",
+            "description": "Получить First Blood",
+            "reward": 100,
+            "icon": "🩸"
+        },
+        {
+            "id": "godlike",
+            "title": "👑 Godlike",
+            "description": "25 убийств без смерти",
+            "reward": 500,
+            "icon": "👑"
+        },
+        {
+            "id": "comeback_king",
+            "title": "⚡ Comeback King",
+            "description": "Выиграть с дефицитом 30k золота",
+            "reward": 300,
+            "icon": "⚡"
+        },
+        {
+            "id": "support_master",
+            "title": "💫 Support Master",
+            "description": "100 игр на саппорте",
+            "target": 100,
+            "reward": 1000,
+            "icon": "💫"
+        },
+        {
+            "id": "farmer",
+            "title": "🚜 Farming Simulator",
+            "description": "1000 last hits в игре",
+            "target": 1000,
+            "reward": 800,
+            "icon": "🚜"
+        },
+        {
+            "id": "versatile",
+            "title": "🔄 Универсал",
+            "description": "Сыграть на 50 разных героях",
+            "target": 50,
+            "reward": 1500,
+            "icon": "🔄"
+        },
+        {
+            "id": "win_streak",
+            "title": "🔥 Win Streak",
+            "description": "10 побед подряд",
+            "target": 10,
+            "reward": 2000,
+            "icon": "🔥"
+        }
+    ]
+}
