@@ -15,7 +15,19 @@ from dotenv import load_dotenv
 import sqlite3
 from collections import Counter
 import random
+# В начало main.py после других импортов добавьте:
+from advanced_stats import AdvancedStats
+from daily_quests_manager import DailyQuestsManager
+from tournament_manager import TournamentManager
+from game_mini_apps import MiniGamesManager
+from achievements_system import AchievementsSystem
 
+# Инициализация менеджеров
+adv_stats = AdvancedStats()
+quests_manager = DailyQuestsManager()
+tournament_manager = TournamentManager()
+games_manager = MiniGamesManager()
+achievements_system = AchievementsSystem()
 # ========== НАСТРОЙКА ==========
 logging.basicConfig(
     level=logging.INFO,
@@ -298,6 +310,11 @@ def get_main_keyboard():
     builder.button(text="👥 Друзья")
     builder.button(text="⚔️ Мета")
     builder.button(text="🛠 Сборки")
+    builder.button(text="📈 Анализ")
+    builder.button(text="🎯 Квесты")
+    builder.button(text="🏆 Турниры")
+    builder.button(text="🎮 Игры")
+    builder.button(text="🏅 Достижения")
     builder.button(text="❤️ Поддержка")
     builder.adjust(2)
     return builder.as_markup(resize_keyboard=True)
@@ -1415,3 +1432,148 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+@dp.message(F.text == "📈 Анализ")
+async def analysis_menu(message: types.Message):
+    keyboard = InlineKeyboardBuilder()
+    keyboard.button(text="📅 Недельная статистика", callback_data="weekly_stats")
+    keyboard.button(text="🔍 Слабые стороны", callback_data="weakness_analysis")
+    keyboard.button(text="🔮 Прогноз матча", callback_data="match_prediction")
+    keyboard.button(text="🎯 Контрпики", callback_data="counterpicks")
+    keyboard.adjust(1)
+    
+    await message.answer(
+        "📈 <b>Анализ и улучшения</b>\n\n"
+        "Выберите тип анализа:",
+        reply_markup=keyboard.as_markup(),
+        parse_mode="HTML"
+    )
+
+# Недельная статистика
+@dp.callback_query(F.data == "weekly_stats")
+async def weekly_stats_handler(callback: types.CallbackQuery):
+    user = get_user(callback.from_user.id)
+    if not user or not user[2]:
+        await callback.answer("❌ Сначала привяжите профиль!")
+        return
+    
+    await callback.answer("⏳ Анализирую недельную статистику...")
+    
+    stats = await adv_stats.get_weekly_stats(user[2])
+    
+    if not stats:
+        await callback.message.answer("❌ Не удалось получить данные за неделю.")
+        return
+    
+    # Форматируем ответ
+    response = f"""
+📅 <b>Ваша неделя в Dota 2</b>
+
+🎮 <b>Общая статистика:</b>
+• Игр: {stats['total_games']}
+• Побед: {stats['wins']}
+• Поражений: {stats['losses']}
+• Винрейт: {stats['wins']/stats['total_games']*100:.1f}%
+
+⚔️ <b>Лучшие герои:</b>
+"""
+    
+    # Находим лучшего героя
+    best_hero = None
+    best_winrate = 0
+    
+    with open('hero_names.json', 'r', encoding='utf-8') as f:
+        hero_names = json.load(f)
+    
+    for hero_id, hero_data in stats['heroes'].items():
+        if hero_data['games'] >= 3:
+            winrate = hero_data['wins'] / hero_data['games'] * 100
+            if winrate > best_winrate:
+                best_winrate = winrate
+                hero_name = hero_names.get(hero_id, f"Герой {hero_id}")
+                best_hero = f"{hero_name} ({winrate:.1f}%)"
+    
+    if best_hero:
+        response += f"• {best_hero}\n"
+    
+    # Самый частый противник (упрощенно)
+    response += f"\n📊 <b>Средний KDA:</b> {stats['kills']/stats['total_games']:.1f}/{stats['deaths']/stats['total_games']:.1f}/{stats['assists']/stats['total_games']:.1f}"
+    
+    keyboard = InlineKeyboardBuilder()
+    keyboard.button(text="⬅️ Назад", callback_data="analysis_back")
+    
+    await callback.message.edit_text(
+        response,
+        reply_markup=keyboard.as_markup(),
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+@dp.message(F.text == "🎯 Квесты")
+async def daily_quests_menu(message: types.Message):
+    user_id = message.from_user.id
+    quests = quests_manager.get_user_quests(user_id)
+    
+    if not quests:
+        # Генерируем новые квесты
+        quests_manager.generate_daily_quests(user_id)
+        quests = quests_manager.get_user_quests(user_id)
+    
+    response = "🎯 <b>Ежедневные задания</b>\n\n"
+    
+    for i, quest in enumerate(quests, 1):
+        completed = quest['progress'] >= quest['target']
+        status = "✅" if completed else "🔄"
+        
+        response += f"{i}. {status} <b>{quest['title']}</b>\n"
+        response += f"   {quest['description']}\n"
+        response += f"   Прогресс: {quest['progress']}/{quest['target']}\n"
+        response += f"   Награда: {quest['reward']} очков\n\n"
+    
+    response += "<i>Задания обновляются каждый день в 00:00</i>"
+    
+    keyboard = InlineKeyboardBuilder()
+    keyboard.button(text="🔄 Обновить", callback_data="refresh_quests")
+    keyboard.button(text="🏆 Мои награды", callback_data="my_rewards")
+    keyboard.adjust(1)
+    
+    await message.answer(
+        response,
+        reply_markup=keyboard.as_markup(),
+        parse_mode="HTML"
+    )
+
+@dp.message(F.text == "🏆 Турниры")
+async def tournaments_menu(message: types.Message):
+    tournaments = tournament_manager.get_active_tournaments()
+    
+    if not tournaments:
+        response = "🏆 <b>Текущие турниры</b>\n\n"
+        response += "На данный момент нет активных турниров.\n"
+        response += "Создайте свой или подождите начала новых!"
+        
+        keyboard = InlineKeyboardBuilder()
+        keyboard.button(text="➕ Создать турнир", callback_data="create_tournament")
+        keyboard.adjust(1)
+    else:
+        response = "🏆 <b>Активные турниры</b>\n\n"
+        
+        for tournament in tournaments[:5]:
+            response += f"🎮 <b>{tournament['name']}</b>\n"
+            response += f"   👥 {tournament['current_participants']}/{tournament['max_participants']}\n"
+            response += f"   🏆 {tournament['prize']}\n"
+            response += f"   📅 Старт: {tournament['start_date']}\n"
+            response += f"   📊 Статус: {tournament['status']}\n\n"
+        
+        keyboard = InlineKeyboardBuilder()
+        keyboard.button(text="➕ Создать турнир", callback_data="create_tournament")
+        keyboard.button(text="📋 Мои турниры", callback_data="my_tournaments")
+        keyboard.button(text="🏆 Таблица лидеров", callback_data="tournament_leaderboard")
+        keyboard.adjust(1)
+    
+    await message.answer(
+        response,
+        reply_markup=keyboard.as_markup(),
+        parse_mode="HTML"
+    )
+
