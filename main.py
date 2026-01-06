@@ -1107,12 +1107,14 @@ async def hero_build_display(callback: types.CallbackQuery):
             heroes_builds = json.load(f)
     except FileNotFoundError:
         await callback.message.answer("❌ Файл сборок не найден.")
+        await callback.answer()
         return
     
     hero_data = heroes_builds.get(hero_id)
     
     if not hero_data:
         await callback.message.answer(f"❌ Сборки для героя с ID {hero_id} не найдены.")
+        await callback.answer()
         return
     
     hero_name = hero_data.get('name', f"Герой {hero_id}")
@@ -1124,6 +1126,7 @@ async def hero_build_display(callback: types.CallbackQuery):
     
     if not roles:
         await callback.message.answer(f"❌ Для героя {hero_name} не указаны роли.")
+        await callback.answer()
         return
     
     role = roles[0]
@@ -1135,6 +1138,7 @@ async def hero_build_display(callback: types.CallbackQuery):
             role = list(builds.keys())[0]
         else:
             await callback.message.answer(f"❌ Для героя {hero_name} нет сборок.")
+            await callback.answer()
             return
     
     build = builds[role]
@@ -1178,7 +1182,7 @@ async def hero_build_display(callback: types.CallbackQuery):
         reply_markup=keyboard.as_markup(),
         parse_mode="HTML"
     )
-    await callback.answer() 
+    await callback.answer()
 
 
 @dp.callback_query(F.data.startswith("hero_role_"))
